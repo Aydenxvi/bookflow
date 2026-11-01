@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# Env
+.env
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Docker
+*.pid
+
+# Alembic
+apps/api/.pytest_cache/
+
+# Build artifacts
+apps/web/build/
+apps/web/dist/
