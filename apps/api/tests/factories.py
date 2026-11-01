@@ -7,13 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.security import TokenPayload, create_access_token
-from app.models.business import Business, BusinessMembership
+from app.models.business import Business, BusinessMembership, BusinessSettings
 from app.models.enums import BookingConfirmationMode, MembershipRole
 from app.models.policy import BookingPolicy
 from app.models.schedule import WorkingSchedule
 from app.models.service import Service, StaffService
 from app.models.staff import Staff
-from app.models.user import User
+from app.models.user import TelegramIdentity, User
 
 
 async def make_business(
@@ -96,6 +96,28 @@ async def make_membership(
     db.add(membership)
     await db.flush()
     return membership
+
+
+async def make_telegram_identity(db: AsyncSession, user: User, *, telegram_user_id: int, **overrides) -> TelegramIdentity:
+    defaults = dict(is_bot_blocked=False)
+    defaults.update(overrides)
+    identity = TelegramIdentity(user_id=user.id, telegram_user_id=telegram_user_id, **defaults)
+    db.add(identity)
+    await db.flush()
+    return identity
+
+
+async def make_settings(db: AsyncSession, business: Business, **overrides) -> BusinessSettings:
+    defaults = dict(
+        notify_business_on_new_booking=True,
+        notify_business_on_cancellation=True,
+        notify_business_daily_summary=False,
+    )
+    defaults.update(overrides)
+    settings = BusinessSettings(business_id=business.id, **defaults)
+    db.add(settings)
+    await db.flush()
+    return settings
 
 
 def auth_header(user: User) -> dict[str, str]:

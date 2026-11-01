@@ -20,7 +20,7 @@ from sqlalchemy.orm import selectinload
 from app.core.authz import RequireBusinessRole
 from app.db.session import get_db
 from app.models.audit import AuditLog
-from app.models.booking import Booking
+from app.models.booking import Booking, BookingStatusHistory
 from app.models.business import Business, BusinessMembership
 from app.models.enums import AuditAction, BookingStatus, MembershipRole
 from app.models.staff import Staff
@@ -30,7 +30,12 @@ from app.routers.deps import (
     get_or_create_policy,
     get_service_in_business_or_404,
 )
-from app.schemas.admin import AdminBookingOut, BookingStatusUpdate, ManualBookingCreate
+from app.schemas.admin import (
+    AdminBookingOut,
+    BookingStatusHistoryOut,
+    BookingStatusUpdate,
+    ManualBookingCreate,
+)
 from app.services import booking as booking_service
 
 router = APIRouter(prefix="/api/v1/admin/businesses/{business_id}/bookings", tags=["admin:bookings"])
@@ -73,6 +78,40 @@ async def _assert_can_touch(
     own_staff_id = await _own_staff_id(db, booking.business_id, membership.user_id)
     if own_staff_id is None or own_staff_id != booking.staff_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only manage your own appointments.")
+
+
+@router.get("/{booking_id}/history", response_model=list[BookingStatusHistoryOut])
+async def get_booking_status_history(
+    business_id: uuid.UUID,
+    booking_id: uuid.UUID,
+    membership: BusinessMembership = Depends(_CAN_VIEW),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    booking = await _get_booking_or_404(business_id, booking_id, db)
+    await _assert_can_touch(db, membership, booking)
+
+    result = await db.execute(
+        select(BookingStatusHistory, User.first_name, User.last_name)
+        .outerjoin(User, User.id == BookingStatusHistory.changed_by_user_id)
+        .where(BookingStatusHistory.booking_id == booking_id)
+        .order_by(BookingStatusHistory.created_at)
+    )
+    history = []
+    for entry, first_name, last_name in result.all():
+        changed_by_name = None
+        if first_name is not None:
+            changed_by_name = f"{first_name} {last_name}".strip() if last_name else first_name
+        history.append(
+            {
+                "id": entry.id,
+                "from_status": entry.from_status,
+                "to_status": entry.to_status,
+                "note": entry.note,
+                "changed_by_name": changed_by_name,
+                "created_at": entry.created_at,
+            }
+        )
+    return history
 
 
 @router.get("", response_model=list[AdminBookingOut])

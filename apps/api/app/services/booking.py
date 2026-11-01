@@ -40,6 +40,7 @@ from app.models.enums import BookingConfirmationMode, BookingStatus
 from app.models.policy import BookingPolicy
 from app.models.service import Service
 from app.models.user import User
+from app.services import notifications
 from app.services.availability import ACTIVE_BOOKING_STATUSES, compute_availability
 
 VALID_TRANSITIONS: dict[BookingStatus, set[BookingStatus]] = {
@@ -142,6 +143,7 @@ async def create_booking(
     customer_notes: str | None,
     idempotency_key: str | None,
     is_demo: bool,
+    suppress_notifications: bool = False,
 ) -> Booking:
     if idempotency_key:
         existing = await db.execute(
@@ -200,6 +202,8 @@ async def create_booking(
             booking_id=booking.id, from_status=None, to_status=initial_status, changed_by_user_id=customer.id
         )
     )
+    if not suppress_notifications:
+        await notifications.enqueue_booking_created(db, booking)
     await db.commit()
     await db.refresh(booking)
     return booking
@@ -217,6 +221,7 @@ async def transition_status(
     target: BookingStatus,
     actor_user_id: uuid.UUID | None,
     note: str | None = None,
+    suppress_notifications: bool = False,
 ) -> Booking:
     _assert_transition(booking.status, target)
     from_status = booking.status
@@ -231,6 +236,16 @@ async def transition_status(
             changed_by_user_id=actor_user_id, note=note,
         )
     )
+    if not suppress_notifications:
+        if target == BookingStatus.CONFIRMED and from_status == BookingStatus.PENDING:
+            await notifications.enqueue_confirmed(db, booking)
+        elif target == BookingStatus.CANCELLED:
+            await notifications.enqueue_cancelled(db, booking)
+    elif target == BookingStatus.CANCELLED:
+        # Caller (reschedule_booking) sends its own combined notification via
+        # notifications.enqueue_rescheduled - just stop this now-superseded
+        # booking's pending reminders so none fire after the fact.
+        await notifications.cancel_pending_reminders(db, booking.id)
     await db.commit()
     await db.refresh(booking)
     return booking
@@ -293,12 +308,15 @@ async def reschedule_booking(
         customer_notes=booking.customer_notes,
         idempotency_key=None,
         is_demo=booking.is_demo,
+        suppress_notifications=True,
     )
     new_booking.rescheduled_from_booking_id = booking.id
 
     await transition_status(
-        db, booking, target=BookingStatus.CANCELLED, actor_user_id=customer.id, note="rescheduled"
+        db, booking, target=BookingStatus.CANCELLED, actor_user_id=customer.id, note="rescheduled",
+        suppress_notifications=True,
     )
+    await notifications.enqueue_rescheduled(db, old_booking=booking, new_booking=new_booking)
     await db.commit()
     await db.refresh(new_booking)
     return new_booking

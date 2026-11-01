@@ -118,3 +118,66 @@ async def test_staff_role_cannot_view_dashboard(client, db):
 
     resp = await client.get(f"/api/v1/admin/businesses/{biz.id}/dashboard", headers=auth_header(staff_user))
     assert resp.status_code == 403
+
+
+async def test_dashboard_analytics_buckets_by_local_date_and_sums_revenue(client, db):
+    from datetime import UTC, datetime, timedelta
+
+    from app.models.booking import Booking
+    from app.models.enums import BookingStatus
+
+    biz = await make_business(db, slug="dash-analytics-biz", currency="USD", timezone="UTC")
+    owner = await make_user(db, first_name="Owner")
+    await make_membership(db, biz, owner, role=MembershipRole.BUSINESS_OWNER)
+    service = await make_service(db, biz, price_minor_units=3000, currency="USD")
+    staff = await make_staff(db, biz)
+    customer = await make_user(db, first_name="Cust")
+    await db.flush()
+
+    today = datetime.now(UTC).replace(hour=10, minute=0, second=0, microsecond=0)
+    two_days_ago = today - timedelta(days=2)
+
+    def _booking(starts_at, status, price=3000):
+        return Booking(
+            business_id=biz.id, staff_id=staff.id, service_id=service.id, customer_user_id=customer.id,
+            starts_at=starts_at, ends_at=starts_at + timedelta(minutes=30), status=status,
+            price_minor_units_snapshot=price, currency_snapshot="USD", duration_minutes_snapshot=30,
+            is_demo=False,
+        )
+
+    db.add(_booking(today, BookingStatus.COMPLETED))
+    db.add(_booking(today + timedelta(hours=1), BookingStatus.COMPLETED, price=2000))
+    db.add(_booking(two_days_ago, BookingStatus.CANCELLED))
+    db.add(_booking(two_days_ago + timedelta(hours=1), BookingStatus.CONFIRMED))
+    await db.commit()
+
+    resp = await client.get(
+        f"/api/v1/admin/businesses/{biz.id}/dashboard/analytics?days=7", headers=auth_header(owner)
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    assert len(body["daily"]) == 7
+    by_date = {d["date"]: d for d in body["daily"]}
+    assert by_date[today.date().isoformat()]["bookings_count"] == 2
+    assert by_date[today.date().isoformat()]["revenue_minor_units"] == 5000
+    assert by_date[two_days_ago.date().isoformat()]["bookings_count"] == 2
+    assert by_date[two_days_ago.date().isoformat()]["revenue_minor_units"] == 0  # none completed that day
+
+    status_counts = {s["status"]: s["count"] for s in body["status_breakdown"]}
+    assert status_counts["completed"] == 2
+    assert status_counts["cancelled"] == 1
+    assert status_counts["confirmed"] == 1
+    assert body["currency"] == "USD"
+
+
+async def test_staff_role_cannot_view_analytics(client, db):
+    biz = await make_business(db, slug="dash-analytics-biz-2")
+    staff_user = await make_user(db, first_name="Staff")
+    await make_membership(db, biz, staff_user, role=MembershipRole.STAFF)
+    await db.commit()
+
+    resp = await client.get(
+        f"/api/v1/admin/businesses/{biz.id}/dashboard/analytics", headers=auth_header(staff_user)
+    )
+    assert resp.status_code == 403

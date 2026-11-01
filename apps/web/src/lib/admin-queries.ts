@@ -24,6 +24,14 @@ export function useAdminDashboard(businessId: string | undefined) {
   })
 }
 
+export function useDashboardAnalytics(businessId: string | undefined, days = 30) {
+  return useQuery({
+    queryKey: ['admin', 'dashboard-analytics', businessId, days],
+    queryFn: () => adminApi.getDashboardAnalytics(businessId!, days),
+    enabled: !!businessId,
+  })
+}
+
 // --- Services ---
 
 export function useAdminServices(businessId: string | undefined) {
@@ -215,9 +223,18 @@ export function useChangeBookingStatus(businessId: string) {
   return useMutation({
     mutationFn: ({ bookingId, body }: { bookingId: string; body: BookingStatusUpdate }) =>
       adminApi.changeBookingStatus(businessId, bookingId, body),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['admin', 'bookings', businessId] })
       qc.invalidateQueries({ queryKey: ['admin', 'dashboard', businessId] })
+      qc.invalidateQueries({ queryKey: ['admin', 'booking-history', businessId, variables.bookingId] })
     },
+  })
+}
+
+export function useBookingHistory(businessId: string | undefined, bookingId: string | undefined) {
+  return useQuery({
+    queryKey: ['admin', 'booking-history', businessId, bookingId],
+    queryFn: () => adminApi.getBookingHistory(businessId!, bookingId!),
+    enabled: !!businessId && !!bookingId,
   })
 }

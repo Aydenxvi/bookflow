@@ -5,9 +5,11 @@ import type {
   AdminStaffOut,
   BookingPolicyOut,
   BookingPolicyUpdate,
+  BookingStatusHistoryOut,
   BookingStatusUpdate,
   BusinessOut,
   BusinessProfileUpdate,
+  DashboardAnalyticsOut,
   DayScheduleOut,
   ManualBookingCreate,
   MeOut,
@@ -179,8 +181,14 @@ export const adminApi = {
       method: 'POST',
       body,
     }),
+  getBookingHistory: (businessId: string, bookingId: string) =>
+    request<BookingStatusHistoryOut[]>(`/api/v1/admin/businesses/${businessId}/bookings/${bookingId}/history`),
 
   // --- Dashboard ---
   getDashboard: (businessId: string) =>
     request<DashboardSummaryOut>(`/api/v1/admin/businesses/${businessId}/dashboard`),
+  getDashboardAnalytics: (businessId: string, days = 30) =>
+    request<DashboardAnalyticsOut>(`/api/v1/admin/businesses/${businessId}/dashboard/analytics`, {
+      query: { days: String(days) },
+    }),
 }

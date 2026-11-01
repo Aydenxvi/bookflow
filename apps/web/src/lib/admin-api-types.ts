@@ -233,4 +233,32 @@ export interface DashboardSummaryOut {
   staff_workload: StaffCountOut[]
 }
 
+export interface DailyStatsOut {
+  date: string // "YYYY-MM-DD"
+  bookings_count: number
+  revenue_minor_units: number
+}
+
+export interface StatusBreakdownOut {
+  status: BookingStatus
+  count: number
+}
+
+export interface DashboardAnalyticsOut {
+  daily: DailyStatsOut[]
+  status_breakdown: StatusBreakdownOut[]
+  currency: string
+}
+
+// --- Booking status history ------------------------------------------------
+
+export interface BookingStatusHistoryOut {
+  id: string
+  from_status: BookingStatus | null
+  to_status: BookingStatus
+  note: string | null
+  changed_by_name: string | null
+  created_at: string
+}
+
 export type { BookingStatus, BusinessOut }

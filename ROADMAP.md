@@ -43,11 +43,17 @@ Backend verification: 41 pytest tests (role enforcement for owner/manager/staff/
 
 Frontend verification: a real headless-browser (Playwright) run against the live Vite dev server + FastAPI + Postgres — demo-admin sign-in, full service create/edit/archive/unarchive, staff create + service assignment + weekly schedule + leave exception, a manual booking through the calendar + a status change, and business profile/policy edits through Settings — zero application console/page errors (the only console noise was the same two sandbox-blocked requests — Google Fonts and the Telegram WebApp script — already documented for the customer flow, confirmed by inspecting the failed request URLs directly, not application bugs). See PROGRESS.md for details, including one real bug found and fixed in this checkpoint (`admin_staff.py::set_staff_services` returning a stale cached `service_ids` list immediately after a successful update) and a broken half-finished edit found and fixed in `main.tsx` (a leftover `AuthProvider` reference with its import already removed) before any of this verification could even run.
 
-## Phase 4 — Automation (not started, out of scope for this session)
-- [ ] Telegram notifications (confirmations, cancellations, reschedules)
-- [ ] Scheduled reminder jobs (24h/2h/30m, configurable) via worker
-- [ ] Booking status history surfaced in UI
-- [ ] Business analytics dashboard (Recharts)
+## Phase 4 — Automation (done and verified this session)
+- [x] Telegram notifications (confirmations, cancellations, reschedules) — `app/services/notifications.py`, hooked into `booking.py`'s create/transition/reschedule paths
+- [x] Scheduled reminder jobs (24h/2h/30m, configurable) via worker — new `apps/worker` service, `SELECT ... FOR UPDATE SKIP LOCKED` claim loop, exponential backoff, no in-memory scheduler
+- [x] Booking status history surfaced in UI — `GET /admin/.../bookings/{id}/history` + a timeline dialog on the Calendar page
+- [x] Business analytics dashboard (Recharts) — `GET /admin/.../dashboard/analytics` + `AdminAnalyticsPage.tsx`
+
+Backend verification: 7 new notification tests (automatic vs. manual confirmation, guest customers with no Telegram identity, business-setting flags respected, cancellation cancels pending reminders, reschedule sends exactly one combined notification and moves the reminders, dedupe-key double-insert prevention) + 2 history tests + 2 analytics tests, all passing against real PostgreSQL (79/79 total). A new, fully self-contained `apps/worker` package (no shared imports from `apps/api` — a deliberate, documented, hand-kept Core-table schema mirror) has its own 25 tests against a dedicated real Postgres database (`bookflow_worker_test`), covering message rendering, job claiming/backoff/terminal-failure, daily-summary scheduling with no persistent state, and a full integration pass — plus a genuine cross-service smoke test proving the worker's hand-kept schema actually matches what `apps/api`'s real Alembic-migrated database looks like, not just the worker's own test schema.
+
+Frontend verification: `tsc -b` and `vite build` clean (bundle grew from ~515KB to ~912KB with Recharts added — noted in NEXT_STEPS.md as a code-splitting candidate); `oxlint` clean except the same pre-existing harmless categories already documented in Phase 3. A real headless-browser (Playwright) run against the live Vite dev server + FastAPI + Postgres: created a manual booking, opened its status-history dialog (1 entry), changed its status, reopened the dialog (2 entries), navigated to the new Analytics page and confirmed both charts rendered, switched the date-range selector with no crash. Zero application console/page errors — only the same two sandbox-blocked requests (Google Fonts, `telegram.org`) already documented in every prior checkpoint.
+
+**Known, explicitly-flagged gap**: actual delivery to Telegram's live Bot API was never exercised — no real bot token is available in this sandbox, the same honest limitation as the Phase 2 bot skeleton. The worker's `httpx` POST to `api.telegram.org` is implemented and unit-tested with a mocked client, not run against the real API.
 
 ## Phase 5 — Commercial Readiness (not started, out of scope for this session)
 - [ ] Multi-business onboarding flow

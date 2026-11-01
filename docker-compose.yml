@@ -10,6 +10,12 @@
 # bot token available in this environment (see NEXT_STEPS.md) — apps/web now
 # does, and is wired in below, but like the api service above it has not
 # itself been exercised through `docker compose up` here.
+#
+# apps/worker (Phase 4) is wired in below too, same caveat. Unlike apps/bot
+# it does NOT fail fast without TELEGRAM_BOT_TOKEN — it runs its full
+# claim/retry loop regardless, failing individual sends cleanly instead of
+# crashing — so it's in the default `docker compose up`, not gated behind a
+# profile.
 
 services:
   postgres:
@@ -51,6 +57,18 @@ services:
       - "${WEB_PORT:-5173}:80"
     depends_on:
       - api
+
+  worker:
+    build: ./apps/worker
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-bookflow}:${POSTGRES_PASSWORD:-bookflow}@postgres:5432/${POSTGRES_DB:-bookflow}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
 
   # Opt-in: `docker compose --profile bot up` only. It fails fast without a
   # real BOT_TOKEN (see apps/bot/README.md), so it's excluded from the

@@ -241,6 +241,15 @@ class AdminCustomerOut(BaseModel):
     is_demo: bool
 
 
+class BookingStatusHistoryOut(BaseModel):
+    id: uuid.UUID
+    from_status: BookingStatus | None
+    to_status: BookingStatus
+    note: str | None
+    changed_by_name: str | None
+    created_at: datetime
+
+
 class AdminBookingOut(ORMModel):
     id: uuid.UUID
     status: BookingStatus
@@ -281,3 +290,20 @@ class DashboardSummaryOut(BaseModel):
     revenue_currency: str
     popular_services: list[ServiceCountOut]
     staff_workload: list[StaffCountOut]
+
+
+class DailyStatsOut(BaseModel):
+    date: date
+    bookings_count: int
+    revenue_minor_units: int
+
+
+class StatusBreakdownOut(BaseModel):
+    status: BookingStatus
+    count: int
+
+
+class DashboardAnalyticsOut(BaseModel):
+    daily: list[DailyStatsOut]
+    status_breakdown: list[StatusBreakdownOut]
+    currency: str

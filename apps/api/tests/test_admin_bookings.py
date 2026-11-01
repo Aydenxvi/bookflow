@@ -263,3 +263,59 @@ async def test_cancel_via_status_endpoint_bypasses_cancellation_window(client, d
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "cancelled"
+
+
+async def test_status_history_records_creation_and_transitions(client, db):
+    biz, owner, service, staff = await _setup(db)
+    created = await client.post(
+        f"/api/v1/admin/businesses/{biz.id}/bookings",
+        headers=auth_header(owner),
+        json={
+            "service_id": str(service.id), "staff_id": str(staff.id),
+            "starts_at": _future_iso(2), "customer_name": "History Test",
+        },
+    )
+    booking_id = created.json()["id"]
+
+    await client.post(
+        f"/api/v1/admin/businesses/{biz.id}/bookings/{booking_id}/status",
+        headers=auth_header(owner),
+        json={"status": "cancelled", "note": "changed my mind"},
+    )
+
+    resp = await client.get(
+        f"/api/v1/admin/businesses/{biz.id}/bookings/{booking_id}/history",
+        headers=auth_header(owner),
+    )
+    assert resp.status_code == 200
+    entries = resp.json()
+    assert len(entries) == 2
+    assert entries[0]["from_status"] is None
+    assert entries[0]["to_status"] == "confirmed"
+    assert entries[1]["from_status"] == "confirmed"
+    assert entries[1]["to_status"] == "cancelled"
+    assert entries[1]["note"] == "changed my mind"
+    assert entries[1]["changed_by_name"] == "Owner"
+
+
+async def test_staff_cannot_view_history_of_another_staffs_booking(client, db):
+    biz, owner, service, staff = await _setup(db)
+    other_staff_user = await make_user(db, first_name="Other Staff")
+    await make_membership(db, biz, other_staff_user, role=MembershipRole.STAFF)
+    await db.commit()
+
+    created = await client.post(
+        f"/api/v1/admin/businesses/{biz.id}/bookings",
+        headers=auth_header(owner),
+        json={
+            "service_id": str(service.id), "staff_id": str(staff.id),
+            "starts_at": _future_iso(2), "customer_name": "X",
+        },
+    )
+    booking_id = created.json()["id"]
+
+    resp = await client.get(
+        f"/api/v1/admin/businesses/{biz.id}/bookings/{booking_id}/history",
+        headers=auth_header(other_staff_user),
+    )
+    assert resp.status_code == 403

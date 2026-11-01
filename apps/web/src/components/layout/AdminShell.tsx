@@ -1,4 +1,4 @@
-import { Calendar, LayoutDashboard, Scissors, Settings, Users } from 'lucide-react'
+import { BarChart3, Calendar, LayoutDashboard, Scissors, Settings, Users } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useAdminAuth } from '@/lib/admin-auth'
@@ -6,6 +6,7 @@ import { useAdminAuth } from '@/lib/admin-auth'
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/calendar', label: 'Calendar', icon: Calendar, end: false },
+  { to: '/admin/analytics', label: 'Analytics', icon: BarChart3, end: false },
   { to: '/admin/services', label: 'Services', icon: Scissors, end: false },
   { to: '/admin/staff', label: 'Staff', icon: Users, end: false },
   { to: '/admin/settings', label: 'Settings', icon: Settings, end: false },

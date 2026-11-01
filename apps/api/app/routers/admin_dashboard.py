@@ -5,9 +5,11 @@ payment figure, per spec)."""
 from __future__ import annotations
 
 import uuid
+from collections import defaultdict
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +21,14 @@ from app.models.enums import BookingStatus, MembershipRole
 from app.models.service import Service
 from app.models.staff import Staff
 from app.routers.deps import get_business_or_404
-from app.schemas.admin import DashboardSummaryOut, ServiceCountOut, StaffCountOut
+from app.schemas.admin import (
+    DailyStatsOut,
+    DashboardAnalyticsOut,
+    DashboardSummaryOut,
+    ServiceCountOut,
+    StaffCountOut,
+    StatusBreakdownOut,
+)
 
 router = APIRouter(prefix="/api/v1/admin/businesses/{business_id}/dashboard", tags=["admin:dashboard"])
 
@@ -95,6 +104,73 @@ async def get_dashboard(
         popular_services=popular_services,
         staff_workload=staff_workload,
     )
+
+
+@router.get("/analytics", response_model=DashboardAnalyticsOut)
+async def get_dashboard_analytics(
+    business_id: uuid.UUID,
+    days: int = Query(default=30, ge=1, le=365),
+    business: Business = Depends(get_business_or_404),
+    membership: BusinessMembership = Depends(_CAN_VIEW),
+    db: AsyncSession = Depends(get_db),
+) -> DashboardAnalyticsOut:
+    """Daily booking/revenue series and a status breakdown over the last
+    `days` days, for the Recharts analytics page (ROADMAP Phase 4).
+
+    Bucketing is done in Python against the business's own timezone rather
+    than in SQL, per CLAUDE.md's "conversion to/from business-local time
+    happens at the service layer" — a date_trunc('day', ...) in UTC would
+    put bookings near local midnight on the wrong day for a business whose
+    timezone isn't UTC.
+    """
+    tz = ZoneInfo(business.timezone)
+    now_local = datetime.now(UTC).astimezone(tz)
+    range_end_local = now_local.date()
+    range_start_local = range_end_local - timedelta(days=days - 1)
+
+    # Wide UTC padding around the local range, same reasoning as the
+    # calendar/dashboard-summary endpoints above.
+    window_start_utc = datetime.combine(range_start_local, datetime.min.time(), tzinfo=tz).astimezone(UTC)
+    window_end_utc = datetime.combine(range_end_local, datetime.min.time(), tzinfo=tz).astimezone(UTC) + timedelta(
+        days=1
+    )
+
+    result = await db.execute(
+        select(Booking.starts_at, Booking.status, Booking.price_minor_units_snapshot, Booking.currency_snapshot)
+        .where(
+            Booking.business_id == business_id,
+            Booking.starts_at >= window_start_utc,
+            Booking.starts_at < window_end_utc,
+        )
+    )
+    rows = result.all()
+
+    daily_counts: dict = defaultdict(int)
+    daily_revenue: dict = defaultdict(int)
+    status_counts: dict = defaultdict(int)
+
+    for starts_at, booking_status, price_minor_units, currency in rows:
+        local_date = starts_at.astimezone(tz).date()
+        if local_date < range_start_local or local_date > range_end_local:
+            continue
+        daily_counts[local_date] += 1
+        status_counts[booking_status] += 1
+        if booking_status == BookingStatus.COMPLETED and currency == business.currency:
+            daily_revenue[local_date] += price_minor_units
+
+    daily = [
+        DailyStatsOut(
+            date=range_start_local + timedelta(days=offset),
+            bookings_count=daily_counts.get(range_start_local + timedelta(days=offset), 0),
+            revenue_minor_units=daily_revenue.get(range_start_local + timedelta(days=offset), 0),
+        )
+        for offset in range(days)
+    ]
+    status_breakdown = [
+        StatusBreakdownOut(status=s, count=c) for s, c in sorted(status_counts.items(), key=lambda kv: kv[0].value)
+    ]
+
+    return DashboardAnalyticsOut(daily=daily, status_breakdown=status_breakdown, currency=business.currency)
 
 
 async def _count(db: AsyncSession, business_id: uuid.UUID, *conditions) -> int:

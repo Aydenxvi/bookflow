@@ -21,6 +21,7 @@ import {
   useAdminBookings,
   useAdminServices,
   useAdminStaff,
+  useBookingHistory,
   useChangeBookingStatus,
   useCreateManualBooking,
 } from '@/lib/admin-queries'
@@ -57,6 +58,7 @@ export function AdminCalendarPage() {
   const [serviceId, setServiceId] = useState('')
   const [status, setStatus] = useState('')
   const [creating, setCreating] = useState(false)
+  const [historyBookingId, setHistoryBookingId] = useState<string | null>(null)
 
   const { data: staffList } = useAdminStaff(businessId)
   const { data: services } = useAdminServices(businessId)
@@ -153,6 +155,7 @@ export function AdminCalendarPage() {
                 changeStatus.mutate({ bookingId: booking.id, body: { status: next } })
               }
               pending={changeStatus.isPending}
+              onViewHistory={() => setHistoryBookingId(booking.id)}
             />
           ))}
         </div>
@@ -166,6 +169,14 @@ export function AdminCalendarPage() {
           onClose={() => setCreating(false)}
         />
       )}
+
+      {historyBookingId && (
+        <BookingHistoryDialog
+          businessId={businessId}
+          bookingId={historyBookingId}
+          onClose={() => setHistoryBookingId(null)}
+        />
+      )}
     </div>
   )
 }
@@ -174,10 +185,12 @@ function BookingRow({
   booking,
   onChangeStatus,
   pending,
+  onViewHistory,
 }: {
   booking: AdminBookingOut
   onChangeStatus: (next: BookingStatus) => void
   pending: boolean
+  onViewHistory: () => void
 }) {
   const start = new Date(booking.starts_at)
   const dateLabel = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).format(
@@ -205,6 +218,9 @@ function BookingRow({
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
+          <Button size="sm" variant="ghost" onClick={onViewHistory}>
+            History
+          </Button>
           {NEXT_STATUSES[booking.status].map((next) => (
             <Button
               key={next}
@@ -219,6 +235,60 @@ function BookingRow({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function BookingHistoryDialog({
+  businessId,
+  bookingId,
+  onClose,
+}: {
+  businessId: string
+  bookingId: string
+  onClose: () => void
+}) {
+  const { data: history, isLoading, isError } = useBookingHistory(businessId, bookingId)
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Status history</DialogTitle>
+        </DialogHeader>
+
+        {isLoading && <p className="text-sm text-charcoal-500">Loading…</p>}
+        {isError && <p className="text-sm text-charcoal-500">Couldn't load history.</p>}
+
+        {history && history.length > 0 && (
+          <ol className="space-y-3 border-l border-charcoal-200 pl-4">
+            {history.map((entry) => (
+              <li key={entry.id} className="relative">
+                <span className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-sage-600" />
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={entry.to_status} />
+                  {entry.from_status && (
+                    <span className="text-xs text-charcoal-500">from {entry.from_status.replace('_', ' ')}</span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-xs text-charcoal-500">
+                  {new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
+                    new Date(entry.created_at),
+                  )}
+                  {entry.changed_by_name ? ` · ${entry.changed_by_name}` : ''}
+                </p>
+                {entry.note && <p className="mt-1 text-sm text-charcoal-700">"{entry.note}"</p>}
+              </li>
+            ))}
+          </ol>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
