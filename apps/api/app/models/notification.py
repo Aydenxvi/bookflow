@@ -58,5 +58,5 @@ class NotificationJob(UUIDPkMixin, TimestampMixin, Base):
     # Unique key preventing duplicate job creation, e.g. "reminder_1440:<booking_id>"
     dedupe_key: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
 
-    business: Mapped["Business"] = relationship()
-    booking: Mapped["Booking | None"] = relationship()
+    business: Mapped[Business] = relationship()
+    booking: Mapped[Booking | None] = relationship()

@@ -79,11 +79,11 @@ class Booking(UUIDPkMixin, TimestampMixin, Base):
         ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True
     )
 
-    business: Mapped["Business"] = relationship(back_populates="bookings")
-    staff: Mapped["Staff"] = relationship(back_populates="bookings")
-    service: Mapped["Service"] = relationship(back_populates="bookings")
-    customer: Mapped["User"] = relationship(back_populates="bookings", foreign_keys=[customer_user_id])
-    status_history: Mapped[list["BookingStatusHistory"]] = relationship(
+    business: Mapped[Business] = relationship(back_populates="bookings")
+    staff: Mapped[Staff] = relationship(back_populates="bookings")
+    service: Mapped[Service] = relationship(back_populates="bookings")
+    customer: Mapped[User] = relationship(back_populates="bookings", foreign_keys=[customer_user_id])
+    status_history: Mapped[list[BookingStatusHistory]] = relationship(
         back_populates="booking", cascade="all, delete-orphan", order_by="BookingStatusHistory.created_at"
     )
 
@@ -105,4 +105,4 @@ class BookingStatusHistory(UUIDPkMixin, TimestampMixin, Base):
     )
     note: Mapped[str | None] = mapped_column(String(300), nullable=True)
 
-    booking: Mapped["Booking"] = relationship(back_populates="status_history")
+    booking: Mapped[Booking] = relationship(back_populates="status_history")

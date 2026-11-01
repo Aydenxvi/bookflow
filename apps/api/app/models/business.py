@@ -39,18 +39,18 @@ class Business(UUIDPkMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    memberships: Mapped[list["BusinessMembership"]] = relationship(
+    memberships: Mapped[list[BusinessMembership]] = relationship(
         back_populates="business", cascade="all, delete-orphan"
     )
-    staff: Mapped[list["Staff"]] = relationship(back_populates="business", cascade="all, delete-orphan")
-    services: Mapped[list["Service"]] = relationship(back_populates="business", cascade="all, delete-orphan")
-    bookings: Mapped[list["Booking"]] = relationship(back_populates="business")
-    working_schedules: Mapped[list["WorkingSchedule"]] = relationship(back_populates="business")
-    schedule_exceptions: Mapped[list["ScheduleException"]] = relationship(back_populates="business")
-    settings: Mapped["BusinessSettings | None"] = relationship(
+    staff: Mapped[list[Staff]] = relationship(back_populates="business", cascade="all, delete-orphan")
+    services: Mapped[list[Service]] = relationship(back_populates="business", cascade="all, delete-orphan")
+    bookings: Mapped[list[Booking]] = relationship(back_populates="business")
+    working_schedules: Mapped[list[WorkingSchedule]] = relationship(back_populates="business")
+    schedule_exceptions: Mapped[list[ScheduleException]] = relationship(back_populates="business")
+    settings: Mapped[BusinessSettings | None] = relationship(
         back_populates="business", uselist=False, cascade="all, delete-orphan"
     )
-    policy: Mapped["BookingPolicy | None"] = relationship(
+    policy: Mapped[BookingPolicy | None] = relationship(
         back_populates="business", uselist=False, cascade="all, delete-orphan"
     )
 
@@ -72,8 +72,8 @@ class BusinessMembership(UUIDPkMixin, TimestampMixin, Base):
         Enum(MembershipRole, native_enum=False, length=32), nullable=False
     )
 
-    business: Mapped["Business"] = relationship(back_populates="memberships")
-    user: Mapped["User"] = relationship(back_populates="memberships")
+    business: Mapped[Business] = relationship(back_populates="memberships")
+    user: Mapped[User] = relationship(back_populates="memberships")
 
 
 class BusinessSettings(UUIDPkMixin, TimestampMixin, Base):
@@ -92,4 +92,4 @@ class BusinessSettings(UUIDPkMixin, TimestampMixin, Base):
     notify_business_on_cancellation: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     notify_business_daily_summary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    business: Mapped["Business"] = relationship(back_populates="settings")
+    business: Mapped[Business] = relationship(back_populates="settings")

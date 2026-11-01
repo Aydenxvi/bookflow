@@ -34,12 +34,12 @@ class User(UUIDPkMixin, TimestampMixin, Base):
     # business-facing analytics/exports.
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    telegram_identity: Mapped["TelegramIdentity | None"] = relationship(
+    telegram_identity: Mapped[TelegramIdentity | None] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
-    memberships: Mapped[list["BusinessMembership"]] = relationship(back_populates="user")
-    staff_profiles: Mapped[list["Staff"]] = relationship(back_populates="user")
-    bookings: Mapped[list["Booking"]] = relationship(
+    memberships: Mapped[list[BusinessMembership]] = relationship(back_populates="user")
+    staff_profiles: Mapped[list[Staff]] = relationship(back_populates="user")
+    bookings: Mapped[list[Booking]] = relationship(
         back_populates="customer", foreign_keys="Booking.customer_user_id"
     )
 
@@ -60,4 +60,4 @@ class TelegramIdentity(UUIDPkMixin, TimestampMixin, Base):
     photo_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     is_bot_blocked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    user: Mapped["User"] = relationship(back_populates="telegram_identity")
+    user: Mapped[User] = relationship(back_populates="telegram_identity")

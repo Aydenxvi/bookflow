@@ -36,15 +36,15 @@ class Staff(UUIDPkMixin, TimestampMixin, Base):
     bio: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    business: Mapped["Business"] = relationship(back_populates="staff")
-    user: Mapped["User | None"] = relationship(back_populates="staff_profiles")
-    staff_services: Mapped[list["StaffService"]] = relationship(
+    business: Mapped[Business] = relationship(back_populates="staff")
+    user: Mapped[User | None] = relationship(back_populates="staff_profiles")
+    staff_services: Mapped[list[StaffService]] = relationship(
         back_populates="staff", cascade="all, delete-orphan"
     )
-    working_schedules: Mapped[list["WorkingSchedule"]] = relationship(
+    working_schedules: Mapped[list[WorkingSchedule]] = relationship(
         back_populates="staff", cascade="all, delete-orphan"
     )
-    schedule_exceptions: Mapped[list["ScheduleException"]] = relationship(
+    schedule_exceptions: Mapped[list[ScheduleException]] = relationship(
         back_populates="staff", cascade="all, delete-orphan"
     )
-    bookings: Mapped[list["Booking"]] = relationship(back_populates="staff")
+    bookings: Mapped[list[Booking]] = relationship(back_populates="staff")

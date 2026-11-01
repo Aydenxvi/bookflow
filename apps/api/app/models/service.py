@@ -35,11 +35,11 @@ class Service(UUIDPkMixin, TimestampMixin, Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    business: Mapped["Business"] = relationship(back_populates="services")
-    staff_services: Mapped[list["StaffService"]] = relationship(
+    business: Mapped[Business] = relationship(back_populates="services")
+    staff_services: Mapped[list[StaffService]] = relationship(
         back_populates="service", cascade="all, delete-orphan"
     )
-    bookings: Mapped[list["Booking"]] = relationship(back_populates="service")
+    bookings: Mapped[list[Booking]] = relationship(back_populates="service")
 
 
 class StaffService(UUIDPkMixin, TimestampMixin, Base):
@@ -55,5 +55,5 @@ class StaffService(UUIDPkMixin, TimestampMixin, Base):
         ForeignKey("services.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
-    staff: Mapped["Staff"] = relationship(back_populates="staff_services")
-    service: Mapped["Service"] = relationship(back_populates="staff_services")
+    staff: Mapped[Staff] = relationship(back_populates="staff_services")
+    service: Mapped[Service] = relationship(back_populates="staff_services")

@@ -1,0 +1,44 @@
+# NOTE (session 1, 2026-11-01): this file was written against the spec's
+# requirements but has NOT itself been run in this session — the sandbox
+# this project was built in has no Docker daemon available, so PostgreSQL
+# was run as a native OS service instead and the API/tests were run
+# directly with uvicorn/pytest (see PROGRESS.md for exactly what was
+# verified that way). Treat this file as "should work, not yet proven" until
+# someone runs `docker compose up` on a machine with Docker and confirms it.
+#
+# apps/web and apps/bot don't have Dockerfiles yet because those apps don't
+# exist yet (see NEXT_STEPS.md) — they'll be added to this file alongside
+# their own Dockerfiles in a follow-up commit.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bookflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bookflow}
+      POSTGRES_DB: ${POSTGRES_DB:-bookflow}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - bookflow_postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init-extensions.sql:/docker-entrypoint-initdb.d/init-extensions.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bookflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./apps/api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-bookflow}:${POSTGRES_PASSWORD:-bookflow}@postgres:5432/${POSTGRES_DB:-bookflow}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  bookflow_postgres_data:

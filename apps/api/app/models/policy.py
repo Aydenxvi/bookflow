@@ -41,4 +41,4 @@ class BookingPolicy(UUIDPkMixin, TimestampMixin, Base):
         JSON, nullable=False, default=lambda: [1440, 120, 30]
     )
 
-    business: Mapped["Business"] = relationship(back_populates="policy")
+    business: Mapped[Business] = relationship(back_populates="policy")

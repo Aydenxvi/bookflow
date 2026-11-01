@@ -20,7 +20,8 @@ start_time/end_time (NULL+NULL means "all day").
 from __future__ import annotations
 
 import uuid
-from datetime import date as date_, time as time_
+from datetime import date as date_
+from datetime import time as time_
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, Enum, ForeignKey, Integer, String, Time, UniqueConstraint
@@ -54,9 +55,9 @@ class WorkingSchedule(UUIDPkMixin, TimestampMixin, Base):
     start_time: Mapped[time_] = mapped_column(Time, nullable=False)
     end_time: Mapped[time_] = mapped_column(Time, nullable=False)
 
-    business: Mapped["Business"] = relationship(back_populates="working_schedules")
-    staff: Mapped["Staff | None"] = relationship(back_populates="working_schedules")
-    breaks: Mapped[list["WorkingScheduleBreak"]] = relationship(
+    business: Mapped[Business] = relationship(back_populates="working_schedules")
+    staff: Mapped[Staff | None] = relationship(back_populates="working_schedules")
+    breaks: Mapped[list[WorkingScheduleBreak]] = relationship(
         back_populates="working_schedule", cascade="all, delete-orphan"
     )
 
@@ -72,7 +73,7 @@ class WorkingScheduleBreak(UUIDPkMixin, TimestampMixin, Base):
     start_time: Mapped[time_] = mapped_column(Time, nullable=False)
     end_time: Mapped[time_] = mapped_column(Time, nullable=False)
 
-    working_schedule: Mapped["WorkingSchedule"] = relationship(back_populates="breaks")
+    working_schedule: Mapped[WorkingSchedule] = relationship(back_populates="breaks")
 
 
 class ScheduleException(UUIDPkMixin, TimestampMixin, Base):
@@ -93,5 +94,5 @@ class ScheduleException(UUIDPkMixin, TimestampMixin, Base):
     )
     note: Mapped[str | None] = mapped_column(String(300), nullable=True)
 
-    business: Mapped["Business"] = relationship(back_populates="schedule_exceptions")
-    staff: Mapped["Staff | None"] = relationship(back_populates="schedule_exceptions")
+    business: Mapped[Business] = relationship(back_populates="schedule_exceptions")
+    staff: Mapped[Staff | None] = relationship(back_populates="schedule_exceptions")

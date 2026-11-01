@@ -1,34 +1,34 @@
 # ROADMAP.md — BookFlow Development Phases
 
-Checkboxes are only ticked once the item has actually been built AND verified (ran, tested, or visually checked) — see PROGRESS.md for validation notes. Do not tick from intention; this file is updated at the end of each work session, not drafted in advance.
+Checkboxes are only ticked once the item has actually been built AND verified (ran, tested, or visually checked) — see PROGRESS.md for what was actually verified and how.
 
 ## Phase 1 — Foundation
-- [x] Initialize repository (monorepo structure: apps/web, apps/bot, apps/api, apps/worker, packages/shared, docs/, infrastructure/)
-- [x] Persistent progress files (CLAUDE.md, PROGRESS.md, ROADMAP.md, NEXT_STEPS.md, CHANGELOG.md, README.md, docs/ORIGINAL_SPEC.md)
-- [ ] Configure backend (FastAPI app skeleton, settings, structured logging)
-- [ ] Configure PostgreSQL + async SQLAlchemy 2.x engine/session
-- [ ] Database models for all core entities
-- [ ] Alembic migrations (initial schema, incl. overlap-exclusion constraint)
+- [x] Initialize repository (monorepo structure)
+- [x] Persistent progress files
+- [x] Configure backend (FastAPI app skeleton, settings, structured logging)
+- [x] Configure PostgreSQL + async SQLAlchemy 2.x engine/session
+- [x] Database models for all core entities
+- [x] Alembic migrations (initial schema, incl. overlap-exclusion constraint) — applied and verified against a real database
 - [ ] Configure frontend (Vite + React + TS + Tailwind + shadcn/ui)
 - [ ] Establish design system (tokens, fonts, base layout)
 - [ ] Configure Telegram bot project (aiogram 3.x skeleton)
-- [ ] Implement Telegram `initData` authentication verification (backend)
-- [ ] Demo mode foundation (demo auth endpoint + frontend detection)
+- [x] Implement Telegram `initData` authentication verification (backend) — unit tested
+- [x] Demo mode foundation (demo auth endpoint) — exercised end-to-end over HTTP
 
 ## Phase 2 — Booking MVP
-- [ ] Business profile endpoint + screen
-- [ ] Service selection (list + cards)
-- [ ] Staff/specialist selection ("any available" included)
-- [ ] Availability engine: real slot computation (hours, breaks, exceptions, buffer, lead time, advance window, timezone)
-- [ ] Booking creation with DB-enforced overlap prevention + transactional revalidation + idempotency key
-- [ ] Booking confirmation step + success screen
-- [ ] My Appointments (upcoming/completed/cancelled tabs)
-- [ ] Cancellation (policy-aware)
-- [ ] Reschedule (reuses availability + overlap safety)
-- [ ] Real Postgres persistence end-to-end (no mocked data on the booking path)
-- [ ] Seed demo data: ATELIER — Modern Grooming Studio
+- [ ] Business profile **screen** (backend endpoint done and tested; no UI yet)
+- [ ] Service selection **screen** (backend done; no UI yet)
+- [ ] Staff/specialist selection **screen** (backend done; no UI yet)
+- [x] Availability engine: real slot computation — tested incl. DST, breaks, exceptions, lead time
+- [x] Booking creation with DB-enforced overlap prevention + transactional revalidation + idempotency key — tested incl. a real concurrent-race test
+- [ ] Booking confirmation step + success **screen** (backend endpoint done; no UI yet)
+- [ ] My Appointments **screen** (backend endpoint done and tested; no UI yet)
+- [x] Cancellation (policy-aware) — backend done and tested
+- [x] Reschedule — backend done and tested
+- [x] Real Postgres persistence end-to-end — proven via direct HTTP calls against a running server, not just unit tests
+- [x] Seed demo data: ATELIER — Modern Grooming Studio
 
-**Phase 2 exit criterion**: a user can open the Mini App (or browser demo mode), pick a service, pick a specialist, pick a real available slot, confirm, see success, see it in My Appointments, and cancel it — all against the real database with overlap protection, with this actually run and checked, not just coded.
+**Phase 2 exit criterion**: a user can open the Mini App (or browser demo mode), pick a service, pick a specialist, pick a real available slot, confirm, see success, see it in My Appointments, and cancel it. **The backend half of this is done and verified end-to-end over HTTP. The frontend screens that would let an actual person do this by clicking through a UI do not exist yet** — that's the next work (see NEXT_STEPS.md).
 
 ## Phase 3 — Administration (not started, out of scope for this session)
 - [ ] Owner dashboard overview
