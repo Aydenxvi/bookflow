@@ -43,7 +43,7 @@ twice over, bot handlers import/register-verified).
 10. [x] Real headless-browser (Playwright) E2E pass against the live stack: manual booking → History dialog shows 1 entry → status change → History shows 2 entries → Analytics page renders both charts → date-range switch doesn't crash. Zero application console/page errors. One test-script bug (an ambiguous Playwright locator) found and fixed along the way — not an application bug.
 11. [x] Demo data reseeded to a clean state afterward (duplicate test bookings from the locator-bug-affected first run, plus the final run's own test booking, both cleaned up via direct `psql` deletes).
 12. [x] Update PROGRESS.md/ROADMAP.md/NEXT_STEPS.md/CHANGELOG.md with everything actually verified above.
-13. [ ] Commit and push this Phase 4 checkpoint.
+13. [x] Commit and push this Phase 4 checkpoint (`9480ecc`).
 
 **Explicitly flagged, not papered over**: actual delivery to Telegram's live Bot API was never exercised in this checkpoint either — no real bot token available in this sandbox. The worker's `httpx` POST to `api.telegram.org` is implemented and tested only against a mocked HTTP client.
 
