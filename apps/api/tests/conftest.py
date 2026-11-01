@@ -14,7 +14,9 @@ from __future__ import annotations
 import os
 from collections.abc import AsyncGenerator
 
+import httpx
 import pytest_asyncio
+from httpx import ASGITransport
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -25,7 +27,8 @@ os.environ.setdefault(
 os.environ.setdefault("TELEGRAM_BOT_TOKEN", "test-bot-token-for-signing")
 
 import app.models  # noqa: F401
-from app.db.session import Base
+from app.db.session import Base, get_db
+from app.main import app as fastapi_app
 
 TEST_DATABASE_URL = os.environ["DATABASE_URL"]
 
@@ -91,3 +94,24 @@ async def db_factory():
         return TestSessionLocal()
 
     return _make
+
+
+@pytest_asyncio.fixture
+async def client(db: AsyncSession) -> AsyncGenerator[httpx.AsyncClient, None]:
+    """An HTTP client for the real FastAPI app, used to test admin router
+    behavior end-to-end (role enforcement, status codes, response shapes) —
+    things that can't be verified by calling an endpoint function directly.
+
+    `get_db` is overridden to hand out the *same* session the test itself
+    uses, so factory-created rows (flushed, not necessarily committed) are
+    visible to the request without any cross-connection visibility games.
+    """
+
+    async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        yield db
+
+    fastapi_app.dependency_overrides[get_db] = _override_get_db
+    transport = ASGITransport(app=fastapi_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+    fastapi_app.dependency_overrides.pop(get_db, None)

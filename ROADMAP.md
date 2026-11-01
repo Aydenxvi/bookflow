@@ -30,12 +30,16 @@ Checkboxes are only ticked once the item has actually been built AND verified (r
 
 **Phase 2 exit criterion**: a user can open the Mini App (or browser demo mode), pick a service, pick a specialist, pick a real available slot, confirm, see success, see it in My Appointments, and cancel it. **Done, and verified exactly that way with a real headless browser against the real running stack — see PROGRESS.md for the two full runs (one via "any available", one via a named specialist including a reschedule).**
 
-## Phase 3 — Administration (not started, out of scope for this session)
-- [ ] Owner dashboard overview
-- [ ] Service management (CRUD, archive)
-- [ ] Staff management (CRUD, schedules, breaks, leave)
-- [ ] Appointment calendar (daily/weekly, filters, manual booking, status changes)
-- [ ] Booking policies configuration UI
+## Phase 3 — Administration (backend done + tested this session; frontend not started)
+- [x] Owner dashboard overview — **backend** (today/upcoming/completed/cancelled counts, revenue, popular services, staff workload); **frontend not built**
+- [x] Service management (CRUD, archive) — **backend**; **frontend not built**
+- [x] Staff management (CRUD, service assignment, weekly schedules + breaks, leave/exception management) — **backend**; **frontend not built**
+- [x] Appointment calendar (filters, manual booking, status changes, role-scoped visibility) — **backend**; **frontend not built**
+- [x] Booking policies configuration — **backend** (business profile/hours/policy GET+PATCH); **frontend not built**
+- [ ] Admin frontend UI (dashboard page, calendar page, service/staff management pages, demo-admin sign-in) — not started
+- [ ] Verify the admin frontend end-to-end with a real headless browser, same as Phase 2's customer flow
+
+Backend verification for the items above: 41 new pytest tests (role enforcement for owner/manager/staff/unauthenticated/non-member, business isolation, CRUD + archive/unarchive, schedule + exception CRUD, manual booking through the real concurrency-safe booking service, status transitions incl. cancel-via-status, dashboard aggregate correctness) — all passing against real PostgreSQL, plus a full manual curl pass against the live seeded ATELIER business before the automated tests existed. See PROGRESS.md for details, including one real bug this pass found and fixed (`admin_staff.py::set_staff_services` returning a stale cached `service_ids` list immediately after a successful update).
 
 ## Phase 4 — Automation (not started, out of scope for this session)
 - [ ] Telegram notifications (confirmations, cancellations, reschedules)

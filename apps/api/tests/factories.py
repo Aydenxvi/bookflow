@@ -5,8 +5,10 @@ from datetime import time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.business import Business
-from app.models.enums import BookingConfirmationMode
+from app.core.config import get_settings
+from app.core.security import TokenPayload, create_access_token
+from app.models.business import Business, BusinessMembership
+from app.models.enums import BookingConfirmationMode, MembershipRole
 from app.models.policy import BookingPolicy
 from app.models.schedule import WorkingSchedule
 from app.models.service import Service, StaffService
@@ -17,9 +19,9 @@ from app.models.user import User
 async def make_business(
     db: AsyncSession, *, timezone: str = "Europe/Istanbul", slug: str = "test-biz", **overrides
 ) -> Business:
-    business = Business(
-        slug=slug, name="Test Biz", timezone=timezone, currency="USD", is_active=True, is_demo=True, **overrides
-    )
+    defaults = dict(name="Test Biz", currency="USD", is_active=True, is_demo=True)
+    defaults.update(overrides)
+    business = Business(slug=slug, timezone=timezone, **defaults)
     db.add(business)
     await db.flush()
     return business
@@ -85,3 +87,21 @@ async def make_user(db: AsyncSession, **overrides) -> User:
     db.add(user)
     await db.flush()
     return user
+
+
+async def make_membership(
+    db: AsyncSession, business: Business, user: User, *, role: MembershipRole = MembershipRole.BUSINESS_OWNER
+) -> BusinessMembership:
+    membership = BusinessMembership(business_id=business.id, user_id=user.id, role=role)
+    db.add(membership)
+    await db.flush()
+    return membership
+
+
+def auth_header(user: User) -> dict[str, str]:
+    """A real BookFlow JWT for `user`, as the `Authorization` header an
+    authenticated request would send — exercises the actual token
+    decode/lookup path (app/core/authz.py), not a bypassed test shortcut."""
+    settings = get_settings()
+    token = create_access_token(TokenPayload(user_id=user.id, is_demo=bool(user.is_demo)), settings)
+    return {"Authorization": f"Bearer {token}"}

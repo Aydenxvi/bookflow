@@ -6,7 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging
-from app.routers import auth, availability, bookings, businesses
+from app.routers import (
+    admin_bookings,
+    admin_business,
+    admin_dashboard,
+    admin_services,
+    admin_staff,
+    auth,
+    availability,
+    bookings,
+    businesses,
+)
 
 
 def create_app() -> FastAPI:
@@ -27,6 +37,11 @@ def create_app() -> FastAPI:
     app.include_router(businesses.router)
     app.include_router(availability.router)
     app.include_router(bookings.router)
+    app.include_router(admin_dashboard.router)
+    app.include_router(admin_services.router)
+    app.include_router(admin_staff.router)
+    app.include_router(admin_business.router)
+    app.include_router(admin_bookings.router)
 
     @app.get("/health", tags=["meta"])
     async def health() -> dict:
