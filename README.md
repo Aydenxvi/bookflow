@@ -4,7 +4,7 @@
 
 A Telegram-first appointment-booking platform. Customers book services through a Telegram Mini App (or a browser demo mode); business owners manage services, staff, schedules and appointments through a web admin dashboard.
 
-> Status: early build (Phase 1–2 of 5 — foundation + booking MVP). See `PROGRESS.md`, `ROADMAP.md`, `NEXT_STEPS.md` for exact status, and `CLAUDE.md` for architecture and how to resume work on this project.
+> Status: Phases 1–2 of 5 done — foundation + a working booking MVP, customer-facing (web Mini App + demo mode + Telegram bot skeleton). Phase 3+ (admin dashboard, live notifications, analytics, i18n, real deployment) not started. See `PROGRESS.md`, `ROADMAP.md`, `NEXT_STEPS.md` for exact status, and `CLAUDE.md` for architecture and how to resume work on this project.
 
 ## Stack
 
@@ -16,6 +16,9 @@ A Telegram-first appointment-booking platform. Customers book services through a
 
 ## Local development
 
+### Via Docker Compose
+(Written to the same standard as everything else here, but — unlike the two commands below — **not itself exercised** in the sandbox this was built in, which has no Docker daemon. Worth a first real run before relying on it.)
+
 ```bash
 cp .env.example .env            # fill in values; see comments in the file
 docker compose up -d postgres
@@ -24,14 +27,37 @@ docker compose run --rm api python -m app.seed       # loads the ATELIER demo bu
 docker compose up -d api web
 ```
 
-- API: http://localhost:8000 (docs at `/docs`)
-- Web (browser demo mode): http://localhost:5173
+### Without Docker (what was actually run and verified this session)
 
-No Telegram bot token is required to try the booking flow — opening `apps/web` outside of Telegram automatically switches to **browser demo mode**, scoped to the seeded demo business, so the real booking engine can be exercised without a Telegram account.
+```bash
+# Postgres running natively, with the btree_gist extension available
+cd apps/api
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env            # point DATABASE_URL at your local Postgres
+alembic upgrade head
+python -m app.seed              # loads the ATELIER demo business; safe to re-run
+uvicorn app.main:app --reload   # http://localhost:8000 (docs at /docs)
+
+# in another terminal
+cd apps/web
+npm install
+npm run dev                     # http://localhost:5173
+```
+
+No Telegram bot token is required to try the booking flow — opening `apps/web` outside of Telegram automatically switches to **browser demo mode** (a green banner confirms it), scoped to the seeded demo business, so the real booking engine can be exercised end-to-end without a Telegram account. This exact path — demo auth → browse → book → My Appointments → cancel/reschedule — has been driven with a real headless browser against this exact setup; see `PROGRESS.md`.
 
 ### Running the Telegram bot
 
-Requires a bot token from [@BotFather](https://t.me/BotFather). See `docs/` (added as the bot is wired up) for the exact BotFather steps and how to point the Mini App button at your deployed `apps/web` URL. Not configured in this repository yet — no token was available when this was built.
+Structurally complete (`apps/bot`) but **never run against real Telegram servers** — no bot token was available when this was built. See `apps/bot/README.md` for the exact BotFather steps (including pointing the Mini App Menu Button at your deployed `apps/web` URL) once you have one:
+
+```bash
+cd apps/bot
+python -m venv .venv && source .venv/bin/activate
+pip install -e .
+cp .env.example .env            # fill in BOT_TOKEN and MINI_APP_URL
+python -m app.main
+```
 
 ## Project structure
 

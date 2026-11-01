@@ -6,9 +6,10 @@
 # verified that way). Treat this file as "should work, not yet proven" until
 # someone runs `docker compose up` on a machine with Docker and confirms it.
 #
-# apps/web and apps/bot don't have Dockerfiles yet because those apps don't
-# exist yet (see NEXT_STEPS.md) — they'll be added to this file alongside
-# their own Dockerfiles in a follow-up commit.
+# apps/bot doesn't have a Dockerfile yet because there's no real Telegram
+# bot token available in this environment (see NEXT_STEPS.md) — apps/web now
+# does, and is wired in below, but like the api service above it has not
+# itself been exercised through `docker compose up` here.
 
 services:
   postgres:
@@ -39,6 +40,28 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+        VITE_DEMO_BUSINESS_SLUG: ${DEMO_BUSINESS_SLUG:-atelier}
+    ports:
+      - "${WEB_PORT:-5173}:80"
+    depends_on:
+      - api
+
+  # Opt-in: `docker compose --profile bot up` only. It fails fast without a
+  # real BOT_TOKEN (see apps/bot/README.md), so it's excluded from the
+  # default `docker compose up` to avoid crash-looping when no token is set.
+  bot:
+    build: ./apps/bot
+    env_file:
+      - apps/bot/.env
+    profiles: ["bot"]
+    depends_on:
+      - api
 
 volumes:
   bookflow_postgres_data:

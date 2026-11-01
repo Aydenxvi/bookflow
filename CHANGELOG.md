@@ -2,6 +2,26 @@
 
 All notable changes to BookFlow. Newest entries at the top. Entries are only added once the described work is actually done and verified, not planned.
 
+## 2026-11-01 — Frontend (full booking flow + My Appointments) and Telegram bot skeleton
+
+- **Frontend stack**: Vite + React 19 + TypeScript 7 + Tailwind CSS v4 (`@tailwindcss/vite`, CSS-first `@theme`). Design tokens in `apps/web/src/index.css` match the spec's palette (warm ivory/beige/charcoal, muted sage/emerald accent) and typography (Manrope display, Inter body).
+- **UI primitives** (`apps/web/src/components/ui/`): Button, Card, Badge, Skeleton, Textarea, Tabs, Dialog — hand-written in the shadcn/ui pattern directly on Radix UI primitives + `class-variance-authority`, because the `shadcn` CLI's registry host (`ui.shadcn.com`) returns a `403` through this sandbox's egress proxy (confirmed via the proxy's own status endpoint — a policy denial, not a transient error). Functionally/stylistically equivalent to what the CLI would have generated.
+- **Telegram integration** (`src/lib/telegram.ts`, `src/lib/auth.tsx`): typed wrapper over `window.Telegram.WebApp`; real `initData` is used when present and non-empty, otherwise the app calls `/api/v1/auth/demo` automatically and shows a "Demo mode" banner — no manual toggle needed.
+- **API layer**: typed fetch client + hand-written TS mirrors of every backend Pydantic schema (`src/lib/api-client.ts`, `src/lib/api-types.ts`), and TanStack Query hooks (`src/lib/queries.ts`) for all of it.
+- **Booking flow**: `HomePage` (profile + services by category) → `SpecialistPage` (named staff or "any available") → `DateTimePage` (real day-chip + time-grid picker against the live availability endpoint, correct business-timezone display) → `ConfirmPage` (summary, optional notes, idempotency-keyed submit, friendly 409-conflict message) → `SuccessPage`.
+- **My Appointments** (`AppointmentsPage` + `BookingCard`): upcoming/completed/cancelled tabs; cancel via a confirm dialog; reschedule via an in-place dialog that re-queries availability for the same service/staff and submits the new time.
+- **Verification**: `tsc -b` and `vite build` clean; `oxlint` clean (bar a few intentional, harmless notices — see PROGRESS.md). Then driven end-to-end with a real headless browser (Playwright/Chromium) against the actual local API + Postgres, twice: once through "any available specialist" (book → appears in My Appointments → cancel), once through a **named** specialist (book → **reschedule** to a new real slot → confirmed). Zero application console/page errors in either run.
+- **Real bug found and fixed during that pass**: `apps/api/app/seed.py`'s idempotent reseed (`db.delete(business)`) raised `IntegrityError` on the *second* run, because `Business.bookings`/`working_schedules`/`schedule_exceptions` aren't ORM-cascaded (unlike `staff`/`services`, which are) — SQLAlchemy tried nulling their `NOT NULL` FKs in Python. Fixed by issuing a raw SQL `DELETE` on `Business` instead, which lets Postgres's own `ondelete="CASCADE"` handle it correctly (every relevant FK already has it at the DB level). Verified by reseeding twice in a row and re-running the full `pytest` suite (27/27 still pass).
+- **Telegram bot skeleton** (`apps/bot`, aiogram 3.x): `/start /help /book /mybookings /support` handlers, reply keyboard with `WebAppInfo` buttons (Open BookFlow / My Appointments / How It Works / Contact Support), polling entrypoint that fails fast with a clear message if `BOT_TOKEN` is unset. Deliberately thin — no DB access, no duplicated booking logic. Verified: installed real `aiogram`, confirmed all modules import cleanly and all 7 handlers register on the `Router`; confirmed the no-token fail-fast path actually exits non-zero with a clear message. **Not** verified against real Telegram servers — no bot token was available (see `apps/bot/README.md` for BotFather setup once one exists).
+- **Docker**: `apps/web/Dockerfile` (multi-stage Vite build → nginx with SPA fallback) and `apps/bot/Dockerfile` added; `docker-compose.yml` updated with a `web` service and an opt-in `bot` profile (`docker compose --profile bot up`, since it fails fast without a real token). None of the three Dockerfiles have been exercised with an actual `docker compose up` in this session — still no Docker daemon available here (Postgres continues to run natively; the frontend was run with `npm run dev`/`vite build` directly).
+
+### Known deviations / honestly-flagged gaps
+- `shadcn` CLI couldn't be used (network-blocked in this sandbox); hand-written equivalents used instead — see above.
+- Telegram bot never run against live Telegram servers — no token available.
+- `docker compose up` never run for any of the three services — no Docker daemon in this sandbox.
+- `apps/web/src/lib/api-types.ts` is hand-maintained against the backend schemas, not generated — fine for the current surface area, worth revisiting if the API grows a lot.
+- No admin dashboard (Phase 3), no notification worker (Phase 4) — out of scope for this session, same as before.
+
 ## 2026-11-01 — Backend: models, migration, availability engine, booking service, auth, routers, tests
 
 - **Models**: 16 SQLAlchemy 2.x async models covering every entity from the spec plus `AuditLog` (`apps/api/app/models/`).

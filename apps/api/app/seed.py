@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, date, datetime, time, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.db.session import AsyncSessionLocal
 from app.models.booking import Booking
@@ -29,7 +29,15 @@ async def seed() -> None:
         business = existing.scalar_one_or_none()
         if business is not None:
             print(f"Removing existing demo business '{DEMO_SLUG}' to reseed cleanly...")
-            await db.delete(business)
+            # A plain ORM `db.delete(business)` would make SQLAlchemy try to
+            # null out child FKs in Python for every relationship that isn't
+            # explicitly cascaded (bookings, working_schedules, ...), and
+            # those FKs are NOT NULL — that raises an IntegrityError on the
+            # second and later reseed. Every one of those FKs is already
+            # `ondelete="CASCADE"` at the database level (see the models),
+            # so a raw SQL DELETE lets Postgres itself cascade the removal
+            # correctly instead of fighting the ORM's unit-of-work over it.
+            await db.execute(delete(Business).where(Business.id == business.id))
             await db.commit()
 
         business = Business(

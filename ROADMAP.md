@@ -9,26 +9,26 @@ Checkboxes are only ticked once the item has actually been built AND verified (r
 - [x] Configure PostgreSQL + async SQLAlchemy 2.x engine/session
 - [x] Database models for all core entities
 - [x] Alembic migrations (initial schema, incl. overlap-exclusion constraint) — applied and verified against a real database
-- [ ] Configure frontend (Vite + React + TS + Tailwind + shadcn/ui)
-- [ ] Establish design system (tokens, fonts, base layout)
-- [ ] Configure Telegram bot project (aiogram 3.x skeleton)
+- [x] Configure frontend (Vite + React + TS + Tailwind + shadcn/ui) — shadcn/ui's CLI registry is blocked in this sandbox, so the primitives were hand-written in the same pattern against Radix UI; see PROGRESS.md
+- [x] Establish design system (tokens, fonts, base layout) — `src/index.css` `@theme`, `AppShell` + bottom nav
+- [x] Configure Telegram bot project (aiogram 3.x skeleton) — handlers import/register verified; never run live (no token)
 - [x] Implement Telegram `initData` authentication verification (backend) — unit tested
 - [x] Demo mode foundation (demo auth endpoint) — exercised end-to-end over HTTP
 
 ## Phase 2 — Booking MVP
-- [ ] Business profile **screen** (backend endpoint done and tested; no UI yet)
-- [ ] Service selection **screen** (backend done; no UI yet)
-- [ ] Staff/specialist selection **screen** (backend done; no UI yet)
+- [x] Business profile **screen** — `HomePage`, driven by the real backend endpoint
+- [x] Service selection **screen** — `HomePage`, grouped by category
+- [x] Staff/specialist selection **screen** — `SpecialistPage`, incl. "any available"
 - [x] Availability engine: real slot computation — tested incl. DST, breaks, exceptions, lead time
-- [x] Booking creation with DB-enforced overlap prevention + transactional revalidation + idempotency key — tested incl. a real concurrent-race test
-- [ ] Booking confirmation step + success **screen** (backend endpoint done; no UI yet)
-- [ ] My Appointments **screen** (backend endpoint done and tested; no UI yet)
-- [x] Cancellation (policy-aware) — backend done and tested
-- [x] Reschedule — backend done and tested
-- [x] Real Postgres persistence end-to-end — proven via direct HTTP calls against a running server, not just unit tests
+- [x] Booking creation with DB-enforced overlap prevention + transactional revalidation + idempotency key — tested incl. a real concurrent-race test, and a real browser booking through the UI
+- [x] Booking confirmation step + success **screen** — `ConfirmPage` (notes, 409-conflict handling) + `SuccessPage`
+- [x] My Appointments **screen** — `AppointmentsPage`, upcoming/completed/cancelled tabs
+- [x] Cancellation (policy-aware) — backend done and tested; UI confirm-dialog driven, verified in a real browser
+- [x] Reschedule — backend done and tested; UI in-dialog slot picker, verified in a real browser
+- [x] Real Postgres persistence end-to-end — proven via direct HTTP calls *and* a real headless-browser click-through, not just unit tests
 - [x] Seed demo data: ATELIER — Modern Grooming Studio
 
-**Phase 2 exit criterion**: a user can open the Mini App (or browser demo mode), pick a service, pick a specialist, pick a real available slot, confirm, see success, see it in My Appointments, and cancel it. **The backend half of this is done and verified end-to-end over HTTP. The frontend screens that would let an actual person do this by clicking through a UI do not exist yet** — that's the next work (see NEXT_STEPS.md).
+**Phase 2 exit criterion**: a user can open the Mini App (or browser demo mode), pick a service, pick a specialist, pick a real available slot, confirm, see success, see it in My Appointments, and cancel it. **Done, and verified exactly that way with a real headless browser against the real running stack — see PROGRESS.md for the two full runs (one via "any available", one via a named specialist including a reschedule).**
 
 ## Phase 3 — Administration (not started, out of scope for this session)
 - [ ] Owner dashboard overview
