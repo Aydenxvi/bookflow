@@ -4,7 +4,6 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { App } from './App'
-import { AuthProvider } from './lib/auth'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -19,11 +18,9 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </AuthProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
   </StrictMode>,

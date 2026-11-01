@@ -30,16 +30,18 @@ Checkboxes are only ticked once the item has actually been built AND verified (r
 
 **Phase 2 exit criterion**: a user can open the Mini App (or browser demo mode), pick a service, pick a specialist, pick a real available slot, confirm, see success, see it in My Appointments, and cancel it. **Done, and verified exactly that way with a real headless browser against the real running stack — see PROGRESS.md for the two full runs (one via "any available", one via a named specialist including a reschedule).**
 
-## Phase 3 — Administration (backend done + tested this session; frontend not started)
-- [x] Owner dashboard overview — **backend** (today/upcoming/completed/cancelled counts, revenue, popular services, staff workload); **frontend not built**
-- [x] Service management (CRUD, archive) — **backend**; **frontend not built**
-- [x] Staff management (CRUD, service assignment, weekly schedules + breaks, leave/exception management) — **backend**; **frontend not built**
-- [x] Appointment calendar (filters, manual booking, status changes, role-scoped visibility) — **backend**; **frontend not built**
-- [x] Booking policies configuration — **backend** (business profile/hours/policy GET+PATCH); **frontend not built**
-- [ ] Admin frontend UI (dashboard page, calendar page, service/staff management pages, demo-admin sign-in) — not started
-- [ ] Verify the admin frontend end-to-end with a real headless browser, same as Phase 2's customer flow
+## Phase 3 — Administration (backend + frontend done and verified this session)
+- [x] Owner dashboard overview — stat cards (today/upcoming/completed/cancelled), revenue, popular services, staff workload
+- [x] Service management (CRUD, archive/unarchive)
+- [x] Staff management (CRUD, service assignment, weekly schedules + breaks, leave/exception management)
+- [x] Appointment calendar (date-range + staff/service/status filters, manual booking, status changes, role-scoped visibility)
+- [x] Booking policies configuration (business profile, operating hours, booking policy)
+- [x] Admin frontend UI (`/admin/*`: Dashboard, Calendar, Services, Staff, Settings pages, demo-admin sign-in) — `apps/web/src/AdminApp.tsx` + `pages/admin/`
+- [x] Verified the admin frontend end-to-end with a real headless browser (Playwright) against the live backend — same rigor as Phase 2's customer flow
 
-Backend verification for the items above: 41 new pytest tests (role enforcement for owner/manager/staff/unauthenticated/non-member, business isolation, CRUD + archive/unarchive, schedule + exception CRUD, manual booking through the real concurrency-safe booking service, status transitions incl. cancel-via-status, dashboard aggregate correctness) — all passing against real PostgreSQL, plus a full manual curl pass against the live seeded ATELIER business before the automated tests existed. See PROGRESS.md for details, including one real bug this pass found and fixed (`admin_staff.py::set_staff_services` returning a stale cached `service_ids` list immediately after a successful update).
+Backend verification: 41 pytest tests (role enforcement for owner/manager/staff/unauthenticated/non-member, business isolation, CRUD + archive/unarchive, schedule + exception CRUD, manual booking through the real concurrency-safe booking service, status transitions incl. cancel-via-status, dashboard aggregate correctness) — all passing against real PostgreSQL (68/68 total), plus a full manual curl pass against the live seeded ATELIER business before the automated tests existed.
+
+Frontend verification: a real headless-browser (Playwright) run against the live Vite dev server + FastAPI + Postgres — demo-admin sign-in, full service create/edit/archive/unarchive, staff create + service assignment + weekly schedule + leave exception, a manual booking through the calendar + a status change, and business profile/policy edits through Settings — zero application console/page errors (the only console noise was the same two sandbox-blocked requests — Google Fonts and the Telegram WebApp script — already documented for the customer flow, confirmed by inspecting the failed request URLs directly, not application bugs). See PROGRESS.md for details, including one real bug found and fixed in this checkpoint (`admin_staff.py::set_staff_services` returning a stale cached `service_ids` list immediately after a successful update) and a broken half-finished edit found and fixed in `main.tsx` (a leftover `AuthProvider` reference with its import already removed) before any of this verification could even run.
 
 ## Phase 4 — Automation (not started, out of scope for this session)
 - [ ] Telegram notifications (confirmations, cancellations, reschedules)

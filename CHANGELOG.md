@@ -2,6 +2,30 @@
 
 All notable changes to BookFlow. Newest entries at the top. Entries are only added once the described work is actually done and verified, not planned.
 
+## 2026-11-01 — Phase 3 admin frontend: dashboard, calendar, services, staff, settings
+
+- **Routing split** (`apps/web/src/App.tsx`, `main.tsx`): the app now mounts `AdminApp` at `/admin/*` and `CustomerApp` everywhere else, each with its own independent auth provider/context and localStorage token key (`lib/auth.tsx`/`lib/admin-auth.tsx`), so a browser can hold a customer demo session and an admin demo session side by side without either overwriting the other.
+- **Admin auth** (`lib/admin-auth.tsx`, `components/layout/AdminAuthGate.tsx`): resolves a demo-admin session (`POST /auth/demo-admin`, reused from localStorage after first sign-in) then `GET /auth/me` to find which business/role to administer — never trusts anything client-stored for that. A stale/invalid token drops itself and shows a retry UI instead of looping.
+- **Typed API layer** (`lib/admin-api-client.ts`, `admin-api-types.ts`, `admin-queries.ts`): a fetch client + hand-written TS mirrors of every `app/schemas/admin.py` shape, and a TanStack Query hook per endpoint with correct cache invalidation (a manual booking or status change also invalidates the dashboard query, since both affect its counts).
+- **Five pages**, all wired to the real backend built in the previous checkpoint, with loading states, inline error messages, and no silent failures:
+  - `AdminDashboardPage` — stat cards (today/upcoming/completed/cancelled), revenue, popular services, staff workload.
+  - `AdminServicesPage` — active/archived grouping, a create/edit dialog, archive/unarchive actions.
+  - `AdminStaffPage` — staff list with service-tag badges, a create/edit dialog with a toggle-chip service picker, a schedule dialog, and a leave/closure exceptions section.
+  - `AdminCalendarPage` — date-range + staff/service/status filters, a manual-booking dialog, and inline status-change buttons scoped to each booking's actually-valid next statuses (mirroring the backend's `VALID_TRANSITIONS`).
+  - `AdminSettingsPage` — business profile form, operating hours, booking policy form.
+  - `components/admin/ScheduleEditor.tsx` — one reusable weekly-schedule editor (per-day toggle, start/end time, any number of recurring breaks), shared between a staff member's schedule and the business's own operating hours, matching how the backend models both.
+- **New UI primitives**: `components/ui/input.tsx`, `label.tsx`, `select.tsx` (a styled native `<select>` — no Radix Select needed for this dashboard's handful of pickers), same hand-written shadcn pattern as the rest of the project.
+- **Two real bugs found and fixed before/during verification**:
+  1. `main.tsx` had a broken half-finished edit: a JSX reference to `AuthProvider` whose import had already been removed (the provider had correctly moved into the new `CustomerApp`, but the stale top-level usage wasn't cleaned up) — `tsc -b` would have failed outright. Removed the stale wrapper.
+  2. `admin-api-types.ts` imported `BookingStatus` from the customer-facing `api-types.ts` for its own internal use but never re-exported it, so `AdminCalendarPage.tsx` couldn't import it — added to the file's existing re-export line.
+- **Verification**: `tsc -b` (strict) and `vite build` both clean after the two fixes above (one non-blocking advisory: the main JS chunk is ~515KB, past Vite's 500KB warning threshold — noted as a future code-splitting candidate). `oxlint` clean except the same two categories of pre-existing, already-documented harmless notices from the Phase 2 checkpoint. Then driven end-to-end with a real headless browser (Playwright/Chromium) against the actual local API + Postgres: demo-admin sign-in → dashboard renders → create/edit/archive/unarchive a service → create a staff member with that service assigned → set their weekly schedule → add a leave exception → create a manual booking on the calendar → change its status → edit business profile + booking policy in Settings → revisit the dashboard. Zero application console/page errors — the only console noise was the same two sandbox-blocked requests (Google Fonts, the Telegram WebApp script) already documented for the customer flow, confirmed this time by capturing the actual failed-request URLs rather than assuming the pattern still held.
+- **Demo data reseeded to a clean state** after the E2E run (which had created real "E2E Test Facial (Edited)"/"E2E Test Stylist"/"E2E Walk-in Customer" rows and changed the business address/policy) — confirmed via live HTTP that the reseed restored exactly the original 6 services / 3 staff.
+
+### Known deviations / honestly-flagged gaps
+- No optimistic updates on admin mutations (every save does a full refetch) and no toast/success feedback beyond the dialog closing and the list updating — functional, not polished; would fit naturally into Phase 5.
+- Same booking-service docstring/behavior gap flagged in the backend checkpoint below still applies — not touched this session.
+- Same remaining gaps as always: no notification worker (Phase 4), Telegram bot never run live, no Docker daemon in this sandbox.
+
 ## 2026-11-01 — Phase 3 admin backend: services, staff, business settings, calendar, dashboard
 
 - **Schemas** (`apps/api/app/schemas/admin.py`, new): every admin-facing request/response shape — business profile update (with an IANA-timezone validator), `MeOut`/`MembershipOut`, service/staff create-update-out, weekly-schedule + break + exception shapes, booking-policy out/update, manual-booking-create, booking-status-update, admin booking/customer out (nested service/staff/customer), dashboard summary + service/staff count-out.
