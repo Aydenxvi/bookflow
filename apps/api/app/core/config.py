@@ -28,6 +28,13 @@ class Settings(BaseSettings):
 
     # CORS
     cors_allow_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
+    # In development, also allow any http://localhost:<port> origin via regex — not just the
+    # two ports hardcoded above. This project is routinely run alongside other local projects
+    # that occupy the default 5173/8000/5432 ports, forcing WEB_PORT/API_PORT/POSTGRES_PORT to
+    # be remapped per docker-compose.yml's env-var overrides; without this, every such remap
+    # would also require hand-editing cors_allow_origins and restarting the API. None in
+    # production, where only the explicit allowlist above should apply.
+    cors_allow_origin_regex: str | None = r"^http://localhost:\d+$"
 
     # Rate limiting (simple in-process token bucket defaults; see app/core/rate_limit.py)
     rate_limit_booking_per_minute: int = 10
