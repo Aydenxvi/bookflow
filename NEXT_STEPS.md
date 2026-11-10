@@ -47,10 +47,21 @@ twice over, bot handlers import/register-verified).
 
 **Explicitly flagged, not papered over**: actual delivery to Telegram's live Bot API was never exercised in this checkpoint either — no real bot token available in this sandbox. The worker's `httpx` POST to `api.telegram.org` is implemented and tested only against a mocked HTTP client.
 
+## Phase 4.5 — Docker verified on a real machine, demo UX polish, VPS groundwork
+
+See CHANGELOG.md's 2026-11-10 entry for full detail.
+
+1. [x] `docker compose up` run for real for the first time (on the project owner's own machine, ports remapped via `.env` to avoid colliding with unrelated local projects) — found and fixed two real bugs: `apps/worker`'s `pyproject.toml` packaging (explicit `packages` list vs. Dockerfile layer order) and `apps/api`'s hardcoded CORS allowlist (now a dev-only regex, off in production).
+2. [x] Demo-mode banners (customer + admin) made dismissible via a close button, remembered per-browser.
+3. [x] Home page hero/cover placeholder shrunk (`h-40` → `h-24`) now that the banner above it can be dismissed.
+4. [x] A real Telegram bot token obtained (via @BotFather) — still not yet exercised against live Telegram from any session working on this repo.
+5. [x] VPS deployment groundwork: Caddy reverse proxy + automatic HTTPS added under a new `prod` Compose profile, `.env.example`/README updated with a full "Deploying to a real VPS" walkthrough (Oracle Cloud Free Tier + free `sslip.io`/DuckDNS hostname, no code rewrite).
+6. [ ] **Actually provision the VPS and go live** — the one step that needs the project owner's own action (cloud account signup, is identity/payment verification, DNS): create the Oracle Cloud Free Tier instance, point a free hostname at its IP, copy `.env` with real `DOMAIN`/`TELEGRAM_BOT_TOKEN`/`ENVIRONMENT=production` values, run `docker compose --profile prod --profile bot up -d --build`, confirm Caddy's cert issuance and `/health`, then set the Mini App Menu Button URL in @BotFather. Not done yet — pick this up next.
+7. [ ] Once live, verify the bot and worker against real Telegram for the first time (send a real message, confirm a real notification lands) — closes the oldest "known gap" in this file.
+8. [ ] Update PROGRESS.md/ROADMAP.md with the above once the VPS is actually live and verified — don't check off "deployed" here until it's confirmed reachable from a real Telegram client, not just that the containers started.
+
 ## Worth doing in a future session, not blocking
 
-- **Exercise `docker compose up` for real** on a machine/CI with a Docker daemon (none is available in this sandbox — Postgres was run natively and the frontend with `npm run dev`/`vite build` directly). The compose file and all four Dockerfiles (`api`, `web`, `bot`, `worker`) are written to the same standard as the rest of the code but have never themselves been built/run.
-- **Get a real Telegram bot token** (via @BotFather — see `apps/bot/README.md`) to actually verify the bot *and* the worker against live Telegram: the reply keyboard, the WebApp Menu Button, real `initData` flowing into the already-tested backend verification code, and real `sendMessage` calls actually landing in a Telegram chat.
 - **Retry the `shadcn` CLI** if this project ever moves to an environment where `ui.shadcn.com` isn't blocked — not required (the hand-written primitives in `apps/web/src/components/ui/` are complete and working), but it's the more typical way to add further shadcn components later.
 - Consider generating `apps/web/src/lib/api-types.ts`/`admin-api-types.ts` from the backend's OpenAPI schema instead of hand-maintaining them, now that there's real drift risk as the API surface has grown across three checkpoints.
 - `services/booking.py::create_booking`'s docstring says an explicit `staff_id` is "re-validated" to confirm it offers the service and is active — the current implementation doesn't actually do that check (it only validates an explicit staff_id's *overlap*, not its service-capability or active status). Pre-existing, not touched this session; the admin manual-booking form is the first caller that could plausibly pass a staff_id that doesn't actually offer the chosen service — worth a look.
@@ -61,6 +72,6 @@ twice over, bot handlers import/register-verified).
 
 ## Known gaps to flag honestly, not paper over
 - Rate limiting is in-process only (documented in `app/core/rate_limit.py` and CLAUDE.md) — fine for one API replica, not for a multi-replica deployment.
-- The Telegram bot and the worker's notification delivery have never been run against real Telegram servers — both are implemented and tested against fakes/mocks only, no real `BOT_TOKEN` available in this sandbox (see above).
-- No Docker daemon in this sandbox — `docker compose up` has never actually been run for any of the four services (see above).
+- The Telegram bot and the worker's notification delivery have still never been run against real Telegram servers — a real `BOT_TOKEN` now exists (see Phase 4.5), but it hasn't been exercised yet; both remain implemented and tested only against fakes/mocks until the VPS go-live happens.
+- `docker compose up` (local profiles) has now actually been run and verified on a real machine (see Phase 4.5/CHANGELOG) — the previously-flagged "never run" gap is closed for local dev. The `prod`/Caddy profile, specifically, has NOT yet been run against a real VPS — don't mark deployment done until that happens.
 - `apps/worker`'s schema is a hand-kept mirror of `apps/api`'s, not a shared import — proven to match today by a real cross-service smoke test, but with no automated guard against future drift (see "Worth doing" above).

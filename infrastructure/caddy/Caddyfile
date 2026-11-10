@@ -1,0 +1,33 @@
+# Reverse proxy + automatic HTTPS (Let's Encrypt) for a real VPS deployment.
+#
+# Not used in local dev (`docker compose up`) — only when the `prod` profile is
+# active (`docker compose --profile prod --profile bot up -d`), because local
+# dev already reaches api/web directly on their own host-mapped ports and has
+# no real domain to get a certificate for.
+#
+# {$DOMAIN} comes from the DOMAIN env var in .env — see root README.md's
+# "Deploying to a real VPS" section. It must be a real hostname that resolves
+# to this server's public IP (e.g. a free sslip.io/DuckDNS name), not "localhost"
+# and not a bare IP — Let's Encrypt's HTTP-01 challenge needs a hostname, and
+# Telegram's Mini App webview requires a real HTTPS origin, not an IP literal.
+#
+# Routing: FastAPI's own routers already declare "/api/v1/..." prefixes (see
+# apps/api/app/routers/*.py), so proxying "/api/*" straight through to the api
+# container — no path rewriting — lines up with what apps/web's
+# VITE_API_BASE_URL (just "https://{$DOMAIN}", no "/api" suffix) already
+# expects. Everything else goes to the web container's nginx, which serves the
+# built SPA and handles client-side routes (/, /admin, /appointments, ...)
+# itself via its own fallback-to-index.html config.
+{$DOMAIN} {
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle /health {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+}

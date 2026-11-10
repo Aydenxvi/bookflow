@@ -1,21 +1,21 @@
-# NOTE (session 1, 2026-11-01): this file was written against the spec's
-# requirements but has NOT itself been run in this session — the sandbox
-# this project was built in has no Docker daemon available, so PostgreSQL
-# was run as a native OS service instead and the API/tests were run
-# directly with uvicorn/pytest (see PROGRESS.md for exactly what was
-# verified that way). Treat this file as "should work, not yet proven" until
-# someone runs `docker compose up` on a machine with Docker and confirms it.
+# NOTE (session 2, 2026-11-10): this file has now actually been run with
+# `docker compose up` for real (api/web/worker/postgres, on the user's own
+# machine) — two real bugs turned up and were fixed that way: apps/worker's
+# pyproject.toml needed setuptools auto-discovery instead of an explicit
+# packages list (see git history), and apps/api's CORS was hardcoded to
+# exactly localhost:5173/:4173, which broke as soon as a port had to be
+# remapped to avoid colliding with other local projects. The `bot` service
+# (profile "bot") still hasn't been run against real Telegram servers from
+# inside this repo's own sessions, but a real BOT_TOKEN now exists for it,
+# per NEXT_STEPS.md's live-deployment work.
 #
-# apps/bot doesn't have a Dockerfile yet because there's no real Telegram
-# bot token available in this environment (see NEXT_STEPS.md) — apps/web now
-# does, and is wired in below, but like the api service above it has not
-# itself been exercised through `docker compose up` here.
+# apps/worker does NOT fail fast without TELEGRAM_BOT_TOKEN — it runs its
+# full claim/retry loop regardless, failing individual sends cleanly instead
+# of crashing — so it's in the default `docker compose up`, not gated behind
+# a profile, unlike `bot` which fails fast without one.
 #
-# apps/worker (Phase 4) is wired in below too, same caveat. Unlike apps/bot
-# it does NOT fail fast without TELEGRAM_BOT_TOKEN — it runs its full
-# claim/retry loop regardless, failing individual sends cleanly instead of
-# crashing — so it's in the default `docker compose up`, not gated behind a
-# profile.
+# The `caddy` service (profile "prod") is for a real VPS deployment only —
+# see README.md's "Deploying to a real VPS" section.
 
 services:
   postgres:
@@ -81,5 +81,29 @@ services:
     depends_on:
       - api
 
+  # Opt-in: `docker compose --profile prod up` only — reverse proxy + automatic
+  # HTTPS (Let's Encrypt) for a real VPS deployment, not local dev (local dev
+  # reaches api/web directly on their host-mapped ports and has no real
+  # domain to get a certificate for). Requires DOMAIN set in .env to a real
+  # hostname that resolves to this server. See README.md's "Deploying to a
+  # real VPS" section and infrastructure/caddy/Caddyfile.
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["prod"]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env to your server's real hostname}
+    volumes:
+      - ./infrastructure/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - bookflow_caddy_data:/data
+      - bookflow_caddy_config:/config
+    depends_on:
+      - api
+      - web
+
 volumes:
   bookflow_postgres_data:
+  bookflow_caddy_data:
+  bookflow_caddy_config:

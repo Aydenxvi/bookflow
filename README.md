@@ -17,7 +17,7 @@ A Telegram-first appointment-booking platform. Customers book services through a
 ## Local development
 
 ### Via Docker Compose
-(Written to the same standard as everything else here, but — unlike the two commands below — **not itself exercised** in the sandbox this was built in, which has no Docker daemon. Worth a first real run before relying on it.)
+Run for real (postgres, api, web, worker all up together via `docker compose up`) and fixed two bugs that run turned up: a worker packaging issue and a hardcoded CORS allowlist — see `CHANGELOG.md`.
 
 ```bash
 cp .env.example .env            # fill in values; see comments in the file
@@ -71,6 +71,48 @@ pip install -e .
 cp .env.example .env            # fill in BOT_TOKEN and MINI_APP_URL
 python -m app.main
 ```
+
+## Deploying to a real VPS
+
+This runs the exact same `docker-compose.yml` as local dev — no code rewrite, no serverless split, no webhook — on a real server so the bot and API stay online 24/7. The bot keeps using long-polling (it only needs outbound internet access), and a small Caddy reverse proxy (`infrastructure/caddy/Caddyfile`) is added just to get free automatic HTTPS, which Telegram's Mini App webview requires.
+
+**1. Get a free, always-on VPS.** [Oracle Cloud Free Tier](https://www.oracle.com/cloud/free/) includes a small VM that's free forever (not a trial), with a real public IP — this is the recommended option over sleep-on-idle PaaS platforms (Render/Railway-style free tiers), which stop long-running processes like a continuously polling bot or worker. Create an Ubuntu instance and note its public IP.
+
+**2. Get a free hostname for it.** Let's Encrypt (for HTTPS) and Telegram both require a real hostname, not a bare IP. The fastest option needs no signup: `<your-ip-with-dots-replaced-by-dashes>.sslip.io` — e.g. IP `203.0.113.10` → `203-0-113-10.sslip.io` — already resolves to that IP. (Or get a nicer name for free via [DuckDNS](https://www.duckdns.org/).)
+
+**3. On the VPS**, open only ports 22 (SSH), 80, and 443 in its firewall/security list, then:
+
+```bash
+# Install Docker + Compose plugin (Ubuntu)
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER && newgrp docker
+
+git clone https://github.com/<your-username>/bookflow.git
+cd bookflow
+cp .env.example .env
+```
+
+**4. Edit `.env`** on the VPS:
+- `DOMAIN=` your sslip.io or DuckDNS hostname from step 2
+- `ENVIRONMENT=production`
+- `CORS_ALLOW_ORIGINS=["https://<your-domain>"]`
+- `TELEGRAM_BOT_TOKEN=` your real token from @BotFather
+- `VITE_API_BASE_URL=https://<your-domain>` (no trailing `/api` — the frontend's API client already adds that path)
+- Change `JWT_SECRET`, `POSTGRES_PASSWORD` away from the dev defaults
+
+**5. Bring up the full stack**, including the `prod` (Caddy) and `bot` profiles:
+
+```bash
+docker compose --profile prod --profile bot up -d --build
+docker compose run --rm api alembic upgrade head
+docker compose run --rm api python -m app.seed   # optional — loads the ATELIER demo business
+```
+
+Caddy requests and renews its own Let's Encrypt certificate automatically on first request to `DOMAIN` — give it a minute, then check `https://<your-domain>/health`.
+
+**6. Point the Mini App at it.** In Telegram, message @BotFather → your bot → **Bot Settings → Menu Button → Edit Menu Button URL** → set it to `https://<your-domain>/`. Open your bot in Telegram and the menu button now launches the real Mini App over HTTPS, backed by the same booking engine as the browser demo.
+
+To ship an update later: `git pull && docker compose --profile prod --profile bot up -d --build`.
 
 ## Project structure
 
