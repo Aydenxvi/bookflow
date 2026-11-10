@@ -1,4 +1,5 @@
-import { BarChart3, Calendar, LayoutDashboard, Scissors, Settings, Users } from 'lucide-react'
+import { BarChart3, Calendar, LayoutDashboard, Scissors, Settings, Users, X } from 'lucide-react'
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useAdminAuth } from '@/lib/admin-auth'
@@ -12,8 +13,20 @@ const navItems = [
   { to: '/admin/settings', label: 'Settings', icon: Settings, end: false },
 ]
 
+// See AppShell.tsx's matching customer-side banner for why this is dismiss-and-remember
+// (localStorage) rather than a permanent removal — same reasoning, separate key since the
+// two banners are independent pages a visitor might land on first.
+const DISMISS_KEY = 'bookflow-admin-demo-banner-dismissed'
+
 export function AdminShell() {
   const { membership, firstName } = useAdminAuth()
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(DISMISS_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
 
   return (
     <div className="flex min-h-dvh bg-ivory-soft">
@@ -51,10 +64,27 @@ export function AdminShell() {
       </aside>
 
       <div className="flex-1">
-        <div className="bg-sage-600 px-6 py-2 text-center text-xs font-medium text-ivory">
-          Demo admin dashboard — exploring {membership?.business_name} as a sample business owner. No real
-          account needed.
-        </div>
+        {!dismissed && (
+          <div className="relative bg-sage-600 px-6 py-2 pr-9 text-center text-xs font-medium text-ivory">
+            Demo admin dashboard — exploring {membership?.business_name} as a sample business owner. No real
+            account needed.
+            <button
+              type="button"
+              onClick={() => {
+                setDismissed(true)
+                try {
+                  localStorage.setItem(DISMISS_KEY, '1')
+                } catch {
+                  // best-effort only — missing localStorage just means it reappears next visit
+                }
+              }}
+              aria-label="Dismiss"
+              className="absolute inset-y-0 right-3 flex items-center text-ivory/80 hover:text-ivory"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        )}
         <main className="p-6 lg:p-8">
           <Outlet />
         </main>
