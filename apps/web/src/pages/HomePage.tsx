@@ -33,7 +33,7 @@ export function HomePage() {
   return (
     <div>
       {/* Cover / hero */}
-      <div className="relative h-40 w-full overflow-hidden bg-gradient-to-br from-sage-200 via-sage-100 to-ivory-soft">
+      <div className="relative h-24 w-full overflow-hidden bg-gradient-to-br from-sage-200 via-sage-100 to-ivory-soft">
         {business?.cover_image_url && (
           <img src={business.cover_image_url} alt="" className="h-full w-full object-cover" />
         )}
